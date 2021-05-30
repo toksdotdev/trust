@@ -15,7 +15,7 @@ use parking_lot::Mutex;
 use std::time::Duration;
 use ws::WebsocketContext;
 
-pub(crate) struct ChatSession {
+pub struct ChatSession {
     user_id: Option<String>,
     last_heartbeat_time: Instant,
     chat_server: Addr<ChatServer>,

@@ -1,8 +1,8 @@
-mod room_handler;
 mod connect_handler;
 mod disconnect_handler;
+mod room_handler;
 
-pub use self::{room_handler::*, connect_handler::*, disconnect_handler::*};
+pub use self::{connect_handler::*, disconnect_handler::*, room_handler::*};
 
 /// Chat server sends this messages to session
 #[derive(actix::Message)]

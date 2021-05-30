@@ -15,6 +15,6 @@ impl Handler<Disconnect> for ChatServer {
     fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) {
         println!("User with id: [{}] disconnected", &msg.user_id);
         self.remove_user_from_all_rooms(&msg.user_id);
-        self.broadcast_to_all_rooms(&format!("User {} disconnected!!!", &msg.user_id), &[]);
+        self.broadcast_to_all_rooms(&format!("{} has left<NL>", &msg.user_id), &[]);
     }
 }

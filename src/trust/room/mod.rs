@@ -1,5 +1,8 @@
-use super::server::handlers::Message;
-use super::server::{ChatServer, ChatServerError, UserSessionId};
+mod errors;
+
+pub use self::errors::*;
+use crate::trust::server::handlers::Message;
+use crate::trust::server::{ChatServer, UserSessionId};
 use actix::prelude::*;
 use parking_lot::RwLock;
 use std::{collections::HashMap, rc::Weak};
@@ -11,14 +14,6 @@ type Username = String;
 pub struct ChatRoom {
     server: Weak<ChatServer>,
     store: RwLock<HashMap<UserSessionId, Username>>,
-}
-
-#[derive(Debug)]
-pub enum ChatRoomError {
-    NoServer,
-    InvalidUserId(String),
-    DuplicateSessionId(String),
-    FailedToSend(SendError<Message>),
 }
 
 impl ChatRoom {
@@ -68,17 +63,5 @@ impl ChatRoom {
             });
 
         Ok(())
-    }
-}
-
-impl From<ChatRoomError> for ChatServerError {
-    fn from(error: ChatRoomError) -> Self {
-        ChatServerError::ChatRoomError(error)
-    }
-}
-
-impl From<SendError<Message>> for ChatRoomError {
-    fn from(error: SendError<Message>) -> Self {
-        ChatRoomError::FailedToSend(error)
     }
 }

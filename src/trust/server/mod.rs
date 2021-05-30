@@ -1,9 +1,12 @@
-mod command;
+mod errors;
 pub mod handlers;
 pub mod utils;
 
-use self::handlers::{JoinChatRoom, Message};
-use super::room::{ChatRoom, ChatRoomError};
+pub use self::errors::*;
+use self::handlers::JoinChatRoom;
+use self::handlers::Message;
+
+use crate::trust::room::{ChatRoom, ChatRoomError};
 use actix::{Actor, Context, Recipient};
 use parking_lot::RwLock;
 use std::{collections::HashMap, rc::Weak};
@@ -16,11 +19,6 @@ pub type ChatRoomName = String;
 pub struct ChatServer {
     users: RwLock<HashMap<UserSessionId, Recipient<Message>>>,
     rooms: RwLock<HashMap<ChatRoomName, ChatRoom>>,
-}
-
-#[derive(Debug)]
-pub enum ChatServerError {
-    ChatRoomError(ChatRoomError),
 }
 
 impl ChatServer {
