@@ -1,25 +1,50 @@
-use std::collections::HashMap;
-
-use crate::trust::contracts::Message;
+use super::server::handlers::Message;
+use super::server::{ChatServer, ChatServerError, UserSessionId};
 use actix::prelude::*;
 use parking_lot::RwLock;
-use uuid::Uuid;
+use std::{collections::HashMap, rc::Weak};
 
-#[rtype(result = "()")]
+type Username = String;
+
 #[derive(Message, Debug)]
-pub(crate) struct ChatRoom(RwLock<HashMap<String, Recipient<Message>>>);
+#[rtype(result = "()")]
+pub struct ChatRoom {
+    server: Weak<ChatServer>,
+    store: RwLock<HashMap<UserSessionId, Username>>,
+}
+
+#[derive(Debug)]
+pub enum ChatRoomError {
+    NoServer,
+    InvalidUserId(String),
+    DuplicateSessionId(String),
+    FailedToSend(SendError<Message>),
+}
 
 impl ChatRoom {
-    /// Add a client to the room (returns a unique session id).
-    pub fn add(&self, client: Recipient<Message>) -> String {
-        let session_id = Uuid::new_v4().to_string();
-        self.0.write().insert(session_id.clone(), client);
-        session_id
+    pub fn new(server: Weak<ChatServer>) -> Self {
+        Self {
+            server,
+            store: RwLock::default(),
+        }
     }
 
-    // Remove a client from the room.
-    pub fn remove(&self, session_id: &str) {
-        self.0.write().remove(session_id);
+    /// Add a client to the room.
+    pub fn add(&self, user_id: &str, username: &str) -> Result<(), ChatRoomError> {
+        if let Some(_) = self
+            .store
+            .write()
+            .insert(user_id.to_string(), username.to_string())
+        {
+            return Err(ChatRoomError::DuplicateSessionId(user_id.to_string()));
+        }
+
+        Ok(())
+    }
+
+    // Remove a user from the room.
+    pub fn remove(&self, user_id: &str) {
+        self.store.write().remove(user_id);
     }
 
     // Broadcast message to everyone in chat room excluding users specified.
@@ -27,19 +52,33 @@ impl ChatRoom {
         &self,
         message: &str,
         excluding: &[&str],
-    ) -> Result<(), SendError<Message>> {
-        for (id, client) in self.0.read().iter() {
-            if !excluding.contains(&id.as_str()) {
-                client.do_send(Message(message.to_owned()))?;
-            }
-        }
+    ) -> Result<(), ChatRoomError> {
+        let server = self.server.upgrade().ok_or(ChatRoomError::NoServer)?;
+
+        self.store
+            .read()
+            .keys()
+            .into_iter()
+            .for_each(move |user_id| {
+                if !excluding.contains(&user_id.as_str()) {
+                    if let Some(address) = server.get_users().read().get(user_id) {
+                        let _ = address.do_send(Message(message.to_owned()));
+                    }
+                }
+            });
 
         Ok(())
     }
 }
 
-impl Default for ChatRoom {
-    fn default() -> Self {
-        Self(RwLock::default())
+impl From<ChatRoomError> for ChatServerError {
+    fn from(error: ChatRoomError) -> Self {
+        ChatServerError::ChatRoomError(error)
+    }
+}
+
+impl From<SendError<Message>> for ChatRoomError {
+    fn from(error: SendError<Message>) -> Self {
+        ChatRoomError::FailedToSend(error)
     }
 }
