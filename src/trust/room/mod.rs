@@ -24,6 +24,11 @@ impl ChatRoom {
         }
     }
 
+    /// Check if chatroom is empty.
+    pub fn is_empty(&self) -> bool {
+        self.store.read().is_empty()
+    }
+
     /// Add a client to the room.
     pub fn add(&self, user_id: &str, username: &str) -> Result<(), ChatRoomError> {
         if let Some(_) = self

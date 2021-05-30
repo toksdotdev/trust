@@ -4,7 +4,7 @@ use crate::trust::server::ChatServerError;
 use actix::Recipient;
 use actix::{Context, Handler};
 
-/// New Client has connected.
+/// Connect a client message.
 #[derive(actix::Message)]
 #[rtype(result = "Result<String, ChatServerError>")]
 pub struct Connect {

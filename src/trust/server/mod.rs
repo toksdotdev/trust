@@ -56,10 +56,21 @@ impl ChatServer {
         Ok(())
     }
 
+    /// Evict user completely from the server by deleting every record
+    /// of the user (including socket connection).
+    fn evict_user_from_server(&self, user_id: &str) {
+        self.remove_user_from_all_rooms(user_id);
+        self.users.write().remove(user_id);
+    }
+
     /// Remove user from all rooms.
     fn remove_user_from_all_rooms(&self, user_id: &str) {
-        for room in &mut self.rooms.read().values() {
+        for (name, room) in &mut self.rooms.read().iter() {
             room.remove(user_id);
+
+            if room.is_empty() {
+                self.rooms.write().remove(name);
+            }
         }
     }
 
