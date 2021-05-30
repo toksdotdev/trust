@@ -3,7 +3,7 @@ use actix_web::{web, Error, HttpRequest, HttpResponse, Route};
 use actix_web_actors::ws;
 use web::{Data, Payload};
 
-use crate::trust::{session::ChatSession, server::ChatServer};
+use crate::trust::{user::User, server::ChatServer};
 
 /// Trust
 pub(crate) fn trust_chat_handler() -> Route {
@@ -17,7 +17,7 @@ async fn startup_trust_chat(
     chat_server: Data<Addr<ChatServer>>,
 ) -> Result<HttpResponse, Error> {
     ws::start(
-        ChatSession::new(chat_server.get_ref().clone()),
+        User::new(chat_server.get_ref().clone()),
         &req,
         stream,
     )

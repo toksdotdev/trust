@@ -1,6 +1,6 @@
 mod contracts;
 
-use self::contracts::ChatSessionCommand;
+use self::contracts::UserCommand;
 use super::server::{
     handlers::{ChatServerCommand, Connect, Disconnect, JoinChatRoom, Message},
     ChatServer,
@@ -15,14 +15,14 @@ use parking_lot::Mutex;
 use std::time::Duration;
 use ws::WebsocketContext;
 
-pub struct ChatSession {
-    user_id: Option<String>,
+pub struct User {
+    id: Option<String>,
     last_heartbeat_time: Instant,
     chat_server: Addr<ChatServer>,
     buffer: Mutex<Vec<u8>>,
 }
 
-impl ChatSession {
+impl User {
     /// How often heartbeat pings are sent
     const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 
@@ -32,7 +32,7 @@ impl ChatSession {
     // Create a new instance of trust network.
     pub fn new(chat_server_address: Addr<ChatServer>) -> Self {
         Self {
-            user_id: None,
+            id: None,
             buffer: Mutex::default(),
             last_heartbeat_time: Instant::now(),
             chat_server: chat_server_address,
@@ -41,10 +41,10 @@ impl ChatSession {
 
     /// Start process to check network heartbeat of user at interval.
     fn heartbeat(&self, ctx: &mut <Self as Actor>::Context) {
-        ctx.run_interval(ChatSession::HEARTBEAT_INTERVAL, |network, ctx| {
+        ctx.run_interval(User::HEARTBEAT_INTERVAL, |network, ctx| {
             let time_diff = Instant::now().duration_since(network.last_heartbeat_time);
 
-            if time_diff > ChatSession::CLIENT_TIMEOUT {
+            if time_diff > User::CLIENT_TIMEOUT {
                 println!("Websocket Client heartbeat failed, disconnecting!");
                 ctx.stop();
                 return;
@@ -65,7 +65,7 @@ impl ChatSession {
             .into_actor(self)
             .then(|response, chat_session, ctx| {
                 if let Ok(Ok(session_id)) = response {
-                    chat_session.user_id.replace(session_id);
+                    chat_session.id.replace(session_id);
                     return fut::ready(());
                 }
 
@@ -78,7 +78,7 @@ impl ChatSession {
     /// Handle a complete message received from a client.
     fn handle_complete_message(&self, text: String, ctx: &mut WebsocketContext<Self>) {
         for message in text.split("<NL>") {
-            if let Ok(cmd) = message.parse::<ChatSessionCommand>() {
+            if let Ok(cmd) = message.parse::<UserCommand>() {
                 return self.chat_server.do_send(self.map_to_server_command(&cmd));
             }
 
@@ -87,13 +87,13 @@ impl ChatSession {
     }
 
     /// Map a chat session command to a chat server command
-    fn map_to_server_command(&self, session_command: &ChatSessionCommand) -> ChatServerCommand {
+    fn map_to_server_command(&self, session_command: &UserCommand) -> ChatServerCommand {
         match session_command {
-            ChatSessionCommand::JoinChatRoom {
+            UserCommand::JoinChatRoom {
                 room_name,
                 username,
             } => ChatServerCommand::JoinChatRoom(JoinChatRoom {
-                user_id: self.user_id.clone().unwrap(),
+                user_id: self.id.clone().unwrap(),
                 room_name: room_name.to_string(),
                 username: username.to_string(),
             }),
@@ -124,7 +124,7 @@ impl ChatSession {
 
     fn disconnect(&self) {
         //  User only has session ID if they've registered with the serve
-        if let Some(ref user_id) = self.user_id {
+        if let Some(ref user_id) = self.id {
             let disconnect_msg = Disconnect {
                 user_id: user_id.clone(),
             };
@@ -134,7 +134,7 @@ impl ChatSession {
     }
 }
 
-impl Actor for ChatSession {
+impl Actor for User {
     type Context = WebsocketContext<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
@@ -149,7 +149,7 @@ impl Actor for ChatSession {
 }
 
 /// Handler for ws::Message message
-impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for ChatSession {
+impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for User {
     fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
         self.last_heartbeat_time = Instant::now();
 
@@ -163,7 +163,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for ChatSession {
 }
 
 /// Handle messages from chat server, we simply send it to peer websocket
-impl Handler<Message> for ChatSession {
+impl Handler<Message> for User {
     type Result = ();
 
     fn handle(&mut self, msg: Message, ctx: &mut Self::Context) {

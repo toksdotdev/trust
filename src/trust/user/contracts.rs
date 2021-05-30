@@ -1,11 +1,11 @@
 use crate::trust::server::utils::{valid_chatroom_name, valid_username};
 use std::str::FromStr;
 
-pub enum ChatSessionCommand {
+pub enum UserCommand {
     JoinChatRoom { username: String, room_name: String },
 }
 
-impl FromStr for ChatSessionCommand {
+impl FromStr for UserCommand {
     type Err = String;
 
     fn from_str(message: &str) -> Result<Self, Self::Err> {
