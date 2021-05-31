@@ -1,20 +1,25 @@
 use actix::Actor;
-use actix_web::{App, HttpServer};
-use loaders::setup_tcp;
+use loaders::start_tcp_listener;
+use structopt::StructOpt;
 use trust::server::ChatServer;
-
 mod loaders;
 mod trust;
 
+/// CLI Args
+#[derive(StructOpt, Debug)]
+#[structopt(name = "basic")]
+struct CliArgs {
+    #[structopt(short, long, default_value = "1234")]
+    port: u16,
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let args = CliArgs::from_args();
     let server = ChatServer::default().start();
-    let srv = server.clone();
-    let handle = setup_tcp("127.0.0.1:1238".parse().unwrap(), srv);
+    let address = format!("0.0.0.0:{}", args.port).parse().unwrap();
+    println!("Starting application on {:?}", address);
 
-    HttpServer::new(|| App::new())
-        .bind("127.0.0.1:8086")?
-        .run()
-        .await
-        .and_then(|_| Ok(handle.abort()))
+    let _ = start_tcp_listener(address, server.clone()).await;
+    Ok(())
 }
