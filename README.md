@@ -42,6 +42,10 @@ Any random message.
 
 ## Digging Deeper
 
+### Stack
+
+- [Actix WebSocket](https://actix.rs/docs/websockets)
+
 ### Entities
 
 All entities in the system are running as actors, and they include:
@@ -52,6 +56,10 @@ All entities in the system are running as actors, and they include:
 ### Protocol
 
 The communication between an external client(e.g. telnet) and the server adopts a very simple Codec which can ve found [here](./src/trust/codec.rs).
+
+### Further improvements
+
+- To handle more scale, we can leverage on [actix-redis](https://github.com/actix/actix-extras/tree/master/actix-redis) to persist user sessions to redis (possibly, a redis cluster).
 
 ## Contributing
 

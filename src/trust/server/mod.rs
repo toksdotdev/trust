@@ -10,12 +10,19 @@ use parking_lot::RwLock;
 use std::{collections::HashMap, rc::Weak};
 use uuid::Uuid;
 
+/// User session identifier.
 pub type UserSessionId = String;
+
+/// Chat room name.
 pub type ChatRoomName = String;
+
+/// Directory of chat server users.
+type ChatServerUsers =
+    HashMap<UserSessionId, (Recipient<IncomingChatMessage>, Option<ChatRoomName>)>;
 
 #[derive(Debug)]
 pub struct ChatServer {
-    users: RwLock<HashMap<UserSessionId, (Recipient<IncomingChatMessage>, Option<ChatRoomName>)>>,
+    users: RwLock<ChatServerUsers>,
     rooms: RwLock<HashMap<ChatRoomName, ChatRoom>>,
 }
 
@@ -31,10 +38,7 @@ impl ChatServer {
     }
 
     /// Get all users in the chat server.
-    pub(crate) fn get_users(
-        &self,
-    ) -> &RwLock<HashMap<UserSessionId, (Recipient<IncomingChatMessage>, Option<ChatRoomName>)>>
-    {
+    pub(crate) fn get_users(&self) -> &RwLock<ChatServerUsers> {
         &self.users
     }
 

@@ -1,6 +1,7 @@
 use crate::trust::server::{handlers::IncomingChatMessage, ChatServerError};
 use actix::prelude::SendError;
 
+/// Chat room Error.
 #[derive(Debug)]
 pub enum ChatRoomError {
     NoServer,
