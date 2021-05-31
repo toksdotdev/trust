@@ -1,7 +1,7 @@
 mod errors;
 
 pub use self::errors::*;
-use crate::trust::server::handlers::Message;
+use crate::trust::server::handlers::IncomingChatMessage;
 use crate::trust::server::{ChatServer, UserSessionId};
 use actix::prelude::*;
 use parking_lot::RwLock;
@@ -67,7 +67,7 @@ impl ChatRoom {
             .for_each(move |user_id| {
                 if !excluding.contains(&user_id.as_str()) {
                     if let Some(address) = server.get_users().read().get(user_id) {
-                        let _ = address.0.do_send(Message(message.to_owned()));
+                        let _ = address.0.do_send(IncomingChatMessage(message.to_owned()));
                     }
                 }
             });

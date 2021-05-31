@@ -3,7 +3,7 @@ pub mod handlers;
 pub mod utils;
 
 pub use self::errors::*;
-use self::handlers::Message;
+use self::handlers::IncomingChatMessage;
 use crate::trust::room::{ChatRoom, ChatRoomError};
 use actix::{Actor, Context, Recipient};
 use parking_lot::RwLock;
@@ -15,29 +15,26 @@ pub type ChatRoomName = String;
 
 #[derive(Debug)]
 pub struct ChatServer {
-    users: RwLock<HashMap<UserSessionId, (Recipient<Message>, Option<ChatRoomName>)>>,
+    users: RwLock<HashMap<UserSessionId, (Recipient<IncomingChatMessage>, Option<ChatRoomName>)>>,
     rooms: RwLock<HashMap<ChatRoomName, ChatRoom>>,
 }
 
 impl ChatServer {
     fn handle_new_connection(
         &mut self,
-        client: Recipient<Message>,
+        client: Recipient<IncomingChatMessage>,
     ) -> Result<String, ChatServerError> {
         // TODO: Hopefully this scales to billions of users to have colliding uuids ;)
         let user_id = Uuid::new_v4().to_string();
-        self.users
-            .write()
-            .insert(user_id.clone(), (client, None))
-            .unwrap();
-
+        self.users.write().insert(user_id.clone(), (client, None));
         Ok(user_id)
     }
 
     /// Get all users in the chat server.
     pub(crate) fn get_users(
         &self,
-    ) -> &RwLock<HashMap<UserSessionId, (Recipient<Message>, Option<ChatRoomName>)>> {
+    ) -> &RwLock<HashMap<UserSessionId, (Recipient<IncomingChatMessage>, Option<ChatRoomName>)>>
+    {
         &self.users
     }
 
@@ -63,6 +60,13 @@ impl ChatServer {
         }
 
         None
+    }
+
+    /// Send a direct message to a user.
+    fn message_user(&self, user_id: &str, message: &str) {
+        if let Some((recipient, _)) = self.users.read().get(user_id) {
+            let _ = recipient.do_send(IncomingChatMessage(message.to_string()));
+        }
     }
 
     // Add a user to a room.

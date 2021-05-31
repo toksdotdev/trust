@@ -1,4 +1,4 @@
-use crate::trust::server::{handlers::Message, ChatServerError};
+use crate::trust::server::{handlers::IncomingChatMessage, ChatServerError};
 use actix::prelude::SendError;
 
 #[derive(Debug)]
@@ -6,7 +6,7 @@ pub enum ChatRoomError {
     NoServer,
     InvalidUserId(String),
     DuplicateSessionId(String),
-    FailedToSend(SendError<Message>),
+    FailedToSend(SendError<IncomingChatMessage>),
 }
 
 impl From<ChatRoomError> for ChatServerError {
@@ -15,8 +15,8 @@ impl From<ChatRoomError> for ChatServerError {
     }
 }
 
-impl From<SendError<Message>> for ChatRoomError {
-    fn from(error: SendError<Message>) -> Self {
+impl From<SendError<IncomingChatMessage>> for ChatRoomError {
+    fn from(error: SendError<IncomingChatMessage>) -> Self {
         ChatRoomError::FailedToSend(error)
     }
 }

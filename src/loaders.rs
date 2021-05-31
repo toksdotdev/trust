@@ -1,24 +1,30 @@
+use crate::trust::codec::TrustTcpChatCodec;
+use crate::trust::server::ChatServer;
+use crate::trust::user::User;
+use actix::io::FramedWrite;
+use actix::Actor;
 use actix::Addr;
-use actix_web::{web, Error, HttpRequest, HttpResponse, Route};
-use actix_web_actors::ws;
-use web::{Data, Payload};
+use actix::StreamHandler;
+use actix_web::rt::spawn;
+use std::net::SocketAddr;
+use tokio::io::split;
+use tokio::net::TcpListener;
+use tokio_util::codec::FramedRead;
 
-use crate::trust::{user::User, server::ChatServer};
+/// Setup TCP listener for Trust Chat Server on a socket address specified.
+pub fn setup_tcp(addr: SocketAddr, server: Addr<ChatServer>) -> tokio::task::JoinHandle<()> {
+    spawn(async move {
+        let server = server.clone();
+        let listener = TcpListener::bind(addr).await.unwrap();
 
-/// Trust
-pub(crate) fn trust_chat_handler() -> Route {
-    web::get().to(startup_trust_chat)
-}
+        while let Ok((stream, _)) = listener.accept().await {
+            let server = server.clone();
 
-/// Startup the Trust chat server.
-async fn startup_trust_chat(
-    req: HttpRequest,
-    stream: Payload,
-    chat_server: Data<Addr<ChatServer>>,
-) -> Result<HttpResponse, Error> {
-    ws::start(
-        User::new(chat_server.get_ref().clone()),
-        &req,
-        stream,
-    )
+            User::create(|ctx| {
+                let (r, w) = split(stream);
+                User::add_stream(FramedRead::new(r, TrustTcpChatCodec), ctx);
+                User::new(server, FramedWrite::new(w, TrustTcpChatCodec, ctx))
+            });
+        }
+    })
 }

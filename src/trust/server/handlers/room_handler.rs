@@ -30,25 +30,24 @@ impl<'e> Handler<ChatRoomCommand> for ChatServer {
             } => match self.get_user_room(&user_id) {
                 Some(room_name) => {
                     if let Some(username) = self.get_username(&user_id) {
-                        let message = format_message_from_user(&username, &raw);
+                        let message = format_user_message(&username, &raw);
                         self.broadcast_to_room(&room_name, &&message, &[]);
                     }
                 }
 
                 None => {
                     self.add_user_to_room(&room_name, &user_id, &username)?;
-                    self.broadcast_to_room(
-                        &room_name,
-                        &format!("{} has joined<NL>", &username),
-                        &[],
-                    );
+                    self.broadcast_to_room(&room_name, &format_user_has_joined(&username), &[]);
                 }
             },
 
             ChatRoomCommand::BroadcastMessage { content, user_id } => {
-                if let Some(username) = self.get_username(&user_id) {
-                    let message = format_message_from_user(&username, &content);
-                    self.broadcast_to_room_of_user(&user_id, &&message, &[])
+                match self.get_username(&user_id) {
+                    None => self.message_user(&user_id, &error_message()),
+                    Some(username) => {
+                        let message = format_user_message(&username, &content);
+                        self.broadcast_to_room_of_user(&user_id, &&message, &[])
+                    }
                 }
             }
         }
@@ -57,7 +56,17 @@ impl<'e> Handler<ChatRoomCommand> for ChatServer {
     }
 }
 
-// Format message from user.
-fn format_message_from_user(username: &str, message: &str) -> String {
-    format!("{}: {}", username, message)
+/// Format message from user.
+fn format_user_message(username: &str, message: &str) -> String {
+    format!("{}: {}<NL>", username, message)
+}
+
+/// Format new user has joined message.
+fn format_user_has_joined(username: &str) -> String {
+    format!("{} has joined<NL>", &username)
+}
+
+/// Format new user has joined message.
+fn error_message() -> String {
+    "ERROR<NL>".to_string()
 }

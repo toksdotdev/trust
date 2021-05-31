@@ -1,4 +1,4 @@
-use super::Message;
+use super::IncomingChatMessage;
 use crate::trust::server::ChatServer;
 use crate::trust::server::ChatServerError;
 use actix::Recipient;
@@ -8,7 +8,7 @@ use actix::{Context, Handler};
 #[derive(actix::Message)]
 #[rtype(result = "Result<String, ChatServerError>")]
 pub struct Connect {
-    pub addr: Recipient<Message>,
+    pub addr: Recipient<IncomingChatMessage>,
 }
 
 /// Handler for Connect message.
