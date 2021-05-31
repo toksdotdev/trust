@@ -3,9 +3,7 @@ pub mod handlers;
 pub mod utils;
 
 pub use self::errors::*;
-use self::handlers::JoinChatRoom;
 use self::handlers::Message;
-
 use crate::trust::room::{ChatRoom, ChatRoomError};
 use actix::{Actor, Context, Recipient};
 use parking_lot::RwLock;
@@ -17,7 +15,7 @@ pub type ChatRoomName = String;
 
 #[derive(Debug)]
 pub struct ChatServer {
-    users: RwLock<HashMap<UserSessionId, Recipient<Message>>>,
+    users: RwLock<HashMap<UserSessionId, (Recipient<Message>, Option<ChatRoomName>)>>,
     rooms: RwLock<HashMap<ChatRoomName, ChatRoom>>,
 }
 
@@ -28,30 +26,73 @@ impl ChatServer {
     ) -> Result<String, ChatServerError> {
         // TODO: Hopefully this scales to billions of users to have colliding uuids ;)
         let user_id = Uuid::new_v4().to_string();
-        self.users.write().insert(user_id.clone(), client).unwrap();
+        self.users
+            .write()
+            .insert(user_id.clone(), (client, None))
+            .unwrap();
+
         Ok(user_id)
     }
 
     /// Get all users in the chat server.
-    pub(crate) fn get_users(&self) -> &RwLock<HashMap<UserSessionId, Recipient<Message>>> {
+    pub(crate) fn get_users(
+        &self,
+    ) -> &RwLock<HashMap<UserSessionId, (Recipient<Message>, Option<ChatRoomName>)>> {
         &self.users
     }
 
-    // Add a user to a room.
-    fn add_user_to_room(&self, payload: &JoinChatRoom) -> Result<(), ChatRoomError> {
-        let has_address = self.users.write().contains_key(&payload.user_id);
-        if !has_address {
-            return Err(ChatRoomError::InvalidUserId(payload.user_id.clone()));
+    /// Check if a user has already joined a room.
+    fn get_user_room(&self, user_id: &str) -> Option<String> {
+        let lock = self.users.read();
+
+        if let Some((_, Some(room_name))) = lock.get(user_id) {
+            return Some(room_name.clone());
         }
 
-        unsafe {
-            let server_ptr = Weak::from_raw(self as *const Self);
-            self.rooms
-                .write()
-                .entry(payload.room_name.to_string())
-                .or_insert(ChatRoom::new(server_ptr))
-                .add(&payload.user_id, &payload.username)?;
+        None
+    }
+
+    /// Check if a user has already joined a room.
+    fn get_username(&self, user_id: &str) -> Option<String> {
+        let lock = self.users.read();
+
+        if let Some((_, Some(room_name))) = lock.get(user_id) {
+            if let Some(room) = self.rooms.read().get(room_name) {
+                return room.get_username(user_id);
+            }
         }
+
+        None
+    }
+
+    // Add a user to a room.
+    fn add_user_to_room(
+        &self,
+        room_name: &str,
+        user_id: &str,
+        username: &str,
+    ) -> Result<(), ChatRoomError> {
+        let has_address = self.users.read().contains_key(user_id);
+        if !has_address {
+            return Err(ChatRoomError::InvalidUserId(user_id.to_string()));
+        }
+
+        {
+            unsafe {
+                let server_ptr = Weak::from_raw(self as *const Self);
+                self.rooms
+                    .write()
+                    .entry(room_name.to_string())
+                    .or_insert(ChatRoom::new(server_ptr))
+                    .add(user_id, username)?;
+            }
+        }
+
+        self.users
+            .write()
+            .get_mut(user_id)
+            .ok_or(ChatRoomError::InvalidUserId(user_id.to_string()))?
+            .1 = Some(room_name.to_string());
 
         Ok(())
     }
@@ -59,29 +100,31 @@ impl ChatServer {
     /// Evict user completely from the server by deleting every record
     /// of the user (including socket connection).
     fn evict_user_from_server(&self, user_id: &str) {
-        self.remove_user_from_all_rooms(user_id);
+        self.remove_user_active_room(user_id);
         self.users.write().remove(user_id);
     }
 
-    /// Remove user from all rooms.
-    fn remove_user_from_all_rooms(&self, user_id: &str) {
-        for (name, room) in &mut self.rooms.read().iter() {
-            room.remove(user_id);
+    /// Remove user from their currently active room.
+    fn remove_user_active_room(&self, user_id: &str) {
+        if let Some((_, Some(room_name))) = self.users.read().get(user_id) {
+            if let Some(room) = self.rooms.read().get(room_name) {
+                room.remove(user_id);
 
-            if room.is_empty() {
-                self.rooms.write().remove(name);
+                if room.is_empty() {
+                    self.rooms.write().remove(room_name);
+                }
             }
         }
     }
 
-    /// Broadcast a message to all rooms excluding the user ids specified.
-    fn broadcast_to_all_rooms(&self, message: &str, exclude_user_ids: &[&str]) {
-        for room_name in self.rooms.read().keys() {
+    /// Broadcast message to the room of a user.
+    fn broadcast_to_room_of_user(&self, user_id: &str, message: &str, exclude_user_ids: &[&str]) {
+        if let Some(room_name) = self.get_user_room(user_id) {
             self.broadcast_to_room(&room_name, message, exclude_user_ids);
         }
     }
 
-    /// Broadcast a message to a rooms excluding the session ids specified.
+    /// Broadcast a message to all members of a room.
     fn broadcast_to_room(&self, room_name: &str, message: &str, exclude_user_ids: &[&str]) {
         if let Some(chat_room) = self.rooms.read().get(room_name) {
             if let Err(err) = chat_room.broadcast_to_excluding(message, exclude_user_ids) {

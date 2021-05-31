@@ -2,7 +2,7 @@ mod contracts;
 
 use self::contracts::UserCommand;
 use super::server::{
-    handlers::{ChatServerCommand, Connect, Disconnect, JoinChatRoom, Message},
+    handlers::{ChatRoomCommand, Connect, Disconnect, Message},
     ChatServer,
 };
 use actix::{
@@ -14,6 +14,7 @@ use actix_web_actors::ws;
 use parking_lot::Mutex;
 use std::time::Duration;
 use ws::WebsocketContext;
+use UserCommand::{BroadcastMessage, JoinChatRoom};
 
 pub struct User {
     id: Option<String>,
@@ -79,7 +80,9 @@ impl User {
     fn handle_complete_message(&self, text: String, ctx: &mut WebsocketContext<Self>) {
         for message in text.split("<NL>") {
             if let Ok(cmd) = message.parse::<UserCommand>() {
-                return self.chat_server.do_send(self.map_to_server_command(&cmd));
+                if let Some(cmd) = self.map_to_server_command(cmd, message) {
+                    return self.chat_server.do_send(cmd);
+                }
             }
 
             return ctx.text("ERROR<NL>");
@@ -87,17 +90,29 @@ impl User {
     }
 
     /// Map a chat session command to a chat server command
-    fn map_to_server_command(&self, session_command: &UserCommand) -> ChatServerCommand {
-        match session_command {
-            UserCommand::JoinChatRoom {
+    fn map_to_server_command(
+        &self,
+        session_command: UserCommand,
+        message: &str,
+    ) -> Option<ChatRoomCommand> {
+        let cmd = match session_command {
+            JoinChatRoom {
                 room_name,
                 username,
-            } => ChatServerCommand::JoinChatRoom(JoinChatRoom {
-                user_id: self.id.clone().unwrap(),
+            } => ChatRoomCommand::Join {
+                user_id: self.id.clone()?,
                 room_name: room_name.to_string(),
                 username: username.to_string(),
-            }),
-        }
+                raw: message.to_string(),
+            },
+
+            BroadcastMessage(content) => ChatRoomCommand::BroadcastMessage {
+                user_id: self.id.clone()?,
+                content,
+            },
+        };
+
+        Some(cmd)
     }
 
     //' Handle chunked messages.

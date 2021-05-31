@@ -24,6 +24,11 @@ impl ChatRoom {
         }
     }
 
+    // Get username of a user in a chatroom.
+    pub fn get_username<'a>(&'a self, user_id: &'a str) -> Option<String> {
+        self.store.read().get(user_id).map(|s| s.clone())
+    }
+
     /// Check if chatroom is empty.
     pub fn is_empty(&self) -> bool {
         self.store.read().is_empty()
@@ -62,7 +67,7 @@ impl ChatRoom {
             .for_each(move |user_id| {
                 if !excluding.contains(&user_id.as_str()) {
                     if let Some(address) = server.get_users().read().get(user_id) {
-                        let _ = address.do_send(Message(message.to_owned()));
+                        let _ = address.0.do_send(Message(message.to_owned()));
                     }
                 }
             });

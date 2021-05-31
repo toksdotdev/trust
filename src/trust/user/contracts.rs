@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 pub enum UserCommand {
     JoinChatRoom { username: String, room_name: String },
+    BroadcastMessage(String),
 }
 
 impl FromStr for UserCommand {
@@ -35,7 +36,7 @@ impl FromStr for UserCommand {
                 })
             }
 
-            cmd => Err(format!("Unsupported command: [{}]", cmd)),
+            content => Ok(Self::BroadcastMessage(content.to_string())),
         }
     }
 }
