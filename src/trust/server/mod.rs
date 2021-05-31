@@ -16,17 +16,17 @@ pub type UserSessionId = String;
 /// Chat room name.
 pub type ChatRoomName = String;
 
-/// Directory of chat server users.
-type ChatServerUsers =
-    HashMap<UserSessionId, (Recipient<IncomingChatMessage>, Option<ChatRoomName>)>;
+/// Chat user instance in the server.
+type ChatServerUser = (Recipient<IncomingChatMessage>, Option<ChatRoomName>);
 
 #[derive(Debug)]
 pub struct ChatServer {
-    users: RwLock<ChatServerUsers>,
+    users: RwLock<HashMap<UserSessionId, ChatServerUser>>,
     rooms: RwLock<HashMap<ChatRoomName, ChatRoom>>,
 }
 
 impl ChatServer {
+    /// Handle a new client/user connection to the Chat server.
     fn handle_new_connection(
         &mut self,
         client: Recipient<IncomingChatMessage>,
@@ -38,7 +38,7 @@ impl ChatServer {
     }
 
     /// Get all users in the chat server.
-    pub(crate) fn get_users(&self) -> &RwLock<ChatServerUsers> {
+    pub(crate) fn get_users(&self) -> &RwLock<HashMap<UserSessionId, ChatServerUser>> {
         &self.users
     }
 
