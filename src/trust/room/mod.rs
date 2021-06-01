@@ -25,7 +25,7 @@ impl ChatRoom {
     }
 
     // Get username of a user in a chatroom.
-    pub fn get_username<'a>(&'a self, user_id: &'a str) -> Option<String> {
+    pub fn get_username(&self, user_id: &str) -> Option<String> {
         self.store.read().get(user_id).map(|s| s.clone())
     }
 
