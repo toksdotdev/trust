@@ -3,11 +3,13 @@ mod contracts;
 use self::contracts::UserContract;
 use super::{
     codec::TrustTcpChatCodec,
+    response::error_message,
     server::{
         contracts::{ChatRoomContract, ConnectContract, DisconnectContract, PlainTextMessage},
         ChatServer,
     },
 };
+use crate::log;
 use actix::{
     clock::Instant,
     fut,
@@ -15,7 +17,10 @@ use actix::{
     Actor, ActorContext, ActorFutureExt, Addr, AsyncContext, Context, ContextFutureSpawner,
     Handler, Running, StreamHandler, WrapFuture,
 };
-use std::{io, time::Duration};
+use std::{
+    io::{self, ErrorKind},
+    time::Duration,
+};
 use tokio::io::WriteHalf;
 use tokio::net::TcpStream;
 
@@ -55,7 +60,7 @@ impl User {
             }
 
             if let Some(user_id) = &user.id {
-                println!("Disconnecting user [{}] after heartbeat failed!", user_id);
+                log!("Disconnecting user [{}] after heartbeat failed!", user_id);
 
                 user.chat_server.do_send(DisconnectContract {
                     user_id: user_id.to_string(),
@@ -96,7 +101,7 @@ impl User {
             }
         }
 
-        return self.framed.write("ERROR<NL>".to_string());
+        return self.framed.write(error_message());
     }
 
     /// Map a chat session command to a chat server command
@@ -154,7 +159,12 @@ impl StreamHandler<Result<String, io::Error>> for User {
 
         match msg {
             Ok(text) => self.handle_message(text, ctx),
-            Err(err) => println!("Error occurred {:?}", err.kind()),
+            Err(err) => {
+                log!("Error occurred {:?}", err.kind());
+                if err.kind() == ErrorKind::Other {
+                    ctx.stop();
+                }
+            }
         }
     }
 }

@@ -1,10 +1,13 @@
-mod errors;
 pub mod contracts;
+mod errors;
 pub mod utils;
 
-pub use self::errors::*;
 use self::contracts::PlainTextMessage;
-use crate::trust::room::{ChatRoom, ChatRoomError};
+pub use self::errors::*;
+use crate::{
+    log,
+    trust::room::{ChatRoom, ChatRoomError},
+};
 use actix::{Actor, Context, Recipient};
 use parking_lot::RwLock;
 use std::{collections::HashMap, rc::Weak};
@@ -136,9 +139,10 @@ impl ChatServer {
     fn broadcast_to_room(&self, room_name: &str, message: &str, exclude_user_ids: &[&str]) {
         if let Some(chat_room) = self.rooms.read().get(room_name) {
             if let Err(err) = chat_room.broadcast_to_excluding(message, exclude_user_ids) {
-                println!(
-                    "Error occurred while sending message to room: [{}]; error: [{:?}]",
-                    room_name, err
+                log!(
+                    "Failed to send message to room: [{}]; error: [{:?}]",
+                    room_name,
+                    err
                 )
             }
         }

@@ -1,4 +1,5 @@
 use super::PlainTextMessage;
+use crate::log;
 use crate::trust::server::ChatServer;
 use crate::trust::server::ChatServerError;
 use actix::Recipient;
@@ -16,7 +17,7 @@ impl Handler<ConnectContract> for ChatServer {
     type Result = Result<String, ChatServerError>;
 
     fn handle(&mut self, msg: ConnectContract, _: &mut Context<Self>) -> Self::Result {
-        println!("Someone just connected!!!");
+        log!("Someone just connected!!!");
         self.handle_new_connection(msg.addr)
     }
 }

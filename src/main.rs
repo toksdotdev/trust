@@ -17,8 +17,8 @@ struct CliArgs {
 async fn main() -> std::io::Result<()> {
     let args = CliArgs::from_args();
     let server = ChatServer::default().start();
-    let address = format!("0.0.0.0:{}", args.port).parse().unwrap();
-    println!("Starting application on {:?}", address);
+    let address = format!("127.0.0.1:{}", args.port).parse().unwrap();
+    log!("Starting application on {:?}", address);
 
     let _ = start_tcp_listener(address, server.clone()).await;
     Ok(())
