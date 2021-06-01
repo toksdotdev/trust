@@ -2,12 +2,12 @@ use crate::trust::server::utils::{valid_chatroom_name, valid_username};
 use std::str::FromStr;
 
 #[derive(Debug)]
-pub enum UserCommand {
+pub enum UserContract {
     JoinChatRoom { username: String, room_name: String },
     BroadcastMessage(String),
 }
 
-impl FromStr for UserCommand {
+impl FromStr for UserContract {
     type Err = String;
 
     fn from_str(message: &str) -> Result<Self, Self::Err> {

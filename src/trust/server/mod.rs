@@ -1,9 +1,9 @@
 mod errors;
-pub mod handlers;
+pub mod contracts;
 pub mod utils;
 
 pub use self::errors::*;
-use self::handlers::IncomingChatMessage;
+use self::contracts::PlainTextMessage;
 use crate::trust::room::{ChatRoom, ChatRoomError};
 use actix::{Actor, Context, Recipient};
 use parking_lot::RwLock;
@@ -17,7 +17,7 @@ pub type UserSessionId = String;
 pub type ChatRoomName = String;
 
 /// Chat user instance in the server.
-type ChatServerUser = (Recipient<IncomingChatMessage>, Option<ChatRoomName>);
+type ChatServerUser = (Recipient<PlainTextMessage>, Option<ChatRoomName>);
 
 #[derive(Debug)]
 pub struct ChatServer {
@@ -29,7 +29,7 @@ impl ChatServer {
     /// Handle a new client/user connection to the Chat server.
     fn handle_new_connection(
         &mut self,
-        client: Recipient<IncomingChatMessage>,
+        client: Recipient<PlainTextMessage>,
     ) -> Result<String, ChatServerError> {
         // TODO: Hopefully this scales to billions of users to have colliding uuids ;)
         let user_id = Uuid::new_v4().to_string();
@@ -69,7 +69,7 @@ impl ChatServer {
     /// Send a direct message to a user.
     fn message_user(&self, user_id: &str, message: &str) {
         if let Some((recipient, _)) = self.users.read().get(user_id) {
-            let _ = recipient.do_send(IncomingChatMessage(message.to_string()));
+            let _ = recipient.do_send(PlainTextMessage(message.to_string()));
         }
     }
 

@@ -4,15 +4,15 @@ use actix::{Context, Handler};
 /// Disconnect a client message.
 #[derive(actix::Message)]
 #[rtype(result = "()")]
-pub struct Disconnect {
+pub struct DisconnectContract {
     pub user_id: String,
 }
 
 /// Handler for Disconnect message.
-impl Handler<Disconnect> for ChatServer {
+impl Handler<DisconnectContract> for ChatServer {
     type Result = ();
 
-    fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) {
+    fn handle(&mut self, msg: DisconnectContract, _: &mut Context<Self>) {
         println!("User with id: [{}] disconnected", &msg.user_id);
 
         if let Some(username) = self.get_username(&msg.user_id) {

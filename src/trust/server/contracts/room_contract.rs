@@ -3,7 +3,7 @@ use actix::{Context, Handler};
 
 #[derive(actix::Message)]
 #[rtype(result = "Result<String, ChatServerError>")]
-pub enum ChatRoomCommand {
+pub enum ChatRoomContract {
     Join {
         user_id: String,
         username: String,
@@ -17,12 +17,12 @@ pub enum ChatRoomCommand {
 }
 
 /// Handler for Chat Server Command message.
-impl<'e> Handler<ChatRoomCommand> for ChatServer {
+impl<'e> Handler<ChatRoomContract> for ChatServer {
     type Result = Result<String, ChatServerError>;
 
-    fn handle(&mut self, command: ChatRoomCommand, _: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, command: ChatRoomContract, _: &mut Context<Self>) -> Self::Result {
         match command {
-            ChatRoomCommand::Join {
+            ChatRoomContract::Join {
                 user_id,
                 raw,
                 username,
@@ -41,7 +41,7 @@ impl<'e> Handler<ChatRoomCommand> for ChatServer {
                 }
             },
 
-            ChatRoomCommand::BroadcastMessage { content, user_id } => {
+            ChatRoomContract::BroadcastMessage { content, user_id } => {
                 match self.get_username(&user_id) {
                     None => self.message_user(&user_id, &error_message()),
                     Some(username) => {

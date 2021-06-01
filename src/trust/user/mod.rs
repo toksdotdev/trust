@@ -1,10 +1,10 @@
 mod contracts;
 
-use self::contracts::UserCommand;
+use self::contracts::UserContract;
 use super::{
     codec::TrustTcpChatCodec,
     server::{
-        handlers::{ChatRoomCommand, Connect, Disconnect, IncomingChatMessage},
+        contracts::{ChatRoomContract, ConnectContract, DisconnectContract, PlainTextMessage},
         ChatServer,
     },
 };
@@ -57,7 +57,7 @@ impl User {
             if let Some(user_id) = &user.id {
                 println!("Disconnecting user [{}] after heartbeat failed!", user_id);
 
-                user.chat_server.do_send(Disconnect {
+                user.chat_server.do_send(DisconnectContract {
                     user_id: user_id.to_string(),
                 });
             }
@@ -69,7 +69,7 @@ impl User {
 
     // Attempt to register client session to the chat server.
     fn connect_to_chat_server(&self, ctx: &mut Context<Self>) {
-        let connect_req = Connect {
+        let connect_req = ConnectContract {
             addr: ctx.address().recipient(),
         };
 
@@ -90,7 +90,7 @@ impl User {
 
     /// Handle a message received from a client.
     fn handle_message(&mut self, message: String, _: &mut Context<Self>) {
-        if let Ok(cmd) = message.parse::<UserCommand>() {
+        if let Ok(cmd) = message.parse::<UserContract>() {
             if let Some(cmd) = self.map_to_server_command(cmd, &message) {
                 return self.chat_server.do_send(cmd);
             }
@@ -100,19 +100,19 @@ impl User {
     }
 
     /// Map a chat session command to a chat server command
-    fn map_to_server_command(&self, cmd: UserCommand, message: &str) -> Option<ChatRoomCommand> {
+    fn map_to_server_command(&self, cmd: UserContract, message: &str) -> Option<ChatRoomContract> {
         let cmd = match cmd {
-            UserCommand::JoinChatRoom {
+            UserContract::JoinChatRoom {
                 room_name,
                 username,
-            } => ChatRoomCommand::Join {
+            } => ChatRoomContract::Join {
                 user_id: self.id.clone()?,
                 room_name: room_name.to_string(),
                 username: username.to_string(),
                 raw: message.to_string(),
             },
 
-            UserCommand::BroadcastMessage(content) => ChatRoomCommand::BroadcastMessage {
+            UserContract::BroadcastMessage(content) => ChatRoomContract::BroadcastMessage {
                 user_id: self.id.clone()?,
                 content,
             },
@@ -124,7 +124,7 @@ impl User {
     /// Disconnect a c
     fn disconnect(&self) {
         if let Some(ref user_id) = self.id {
-            let disconnect_msg = Disconnect {
+            let disconnect_msg = DisconnectContract {
                 user_id: user_id.clone(),
             };
 
@@ -160,10 +160,10 @@ impl StreamHandler<Result<String, io::Error>> for User {
 }
 
 /// Handle messages from chat server; we simply send it to peer websocket
-impl Handler<IncomingChatMessage> for User {
+impl Handler<PlainTextMessage> for User {
     type Result = ();
 
-    fn handle(&mut self, msg: IncomingChatMessage, _: &mut Self::Context) {
+    fn handle(&mut self, msg: PlainTextMessage, _: &mut Self::Context) {
         self.framed.write(msg.0 + "\n");
     }
 }
