@@ -13,7 +13,7 @@ pub fn user_left_message(username: &str) -> String {
 }
 
 /// Format message from user.
-pub fn new_chat_message(username: &str, message: &str) -> String {
+pub fn new_user_message(username: &str, message: &str) -> String {
     format!("{}: {}<NL>", username, message)
 }
 

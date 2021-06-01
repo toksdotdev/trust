@@ -6,7 +6,7 @@ use self::contracts::PlainTextMessage;
 pub use self::errors::*;
 use crate::{
     log,
-    trust::room::{ChatRoom, ChatRoomError},
+    trust::room::{Room, RoomError},
 };
 use actix::{Actor, Context, Recipient};
 use parking_lot::RwLock;
@@ -17,23 +17,23 @@ use uuid::Uuid;
 pub type UserSessionId = String;
 
 /// Chat room name.
-pub type ChatRoomName = String;
+pub type RoomName = String;
 
 /// Chat user instance in the server.
-type ChatServerUser = (Recipient<PlainTextMessage>, Option<ChatRoomName>);
+type UserInfo = (Recipient<PlainTextMessage>, Option<RoomName>);
 
 #[derive(Debug)]
-pub struct ChatServer {
-    users: RwLock<HashMap<UserSessionId, ChatServerUser>>,
-    rooms: RwLock<HashMap<ChatRoomName, ChatRoom>>,
+pub struct TrustServer {
+    users: RwLock<HashMap<UserSessionId, UserInfo>>,
+    rooms: RwLock<HashMap<RoomName, Room>>,
 }
 
-impl ChatServer {
+impl TrustServer {
     /// Handle a new client/user connection to the Chat server.
     fn handle_new_connection(
         &mut self,
         client: Recipient<PlainTextMessage>,
-    ) -> Result<String, ChatServerError> {
+    ) -> Result<String, TrustServerError> {
         // TODO: Hopefully this scales to billions of users to have colliding uuids ;)
         let user_id = Uuid::new_v4().to_string();
         self.users.write().insert(user_id.clone(), (client, None));
@@ -41,7 +41,7 @@ impl ChatServer {
     }
 
     /// Get all users in the chat server.
-    pub(crate) fn get_users(&self) -> &RwLock<HashMap<UserSessionId, ChatServerUser>> {
+    pub(crate) fn get_users(&self) -> &RwLock<HashMap<UserSessionId, UserInfo>> {
         &self.users
     }
 
@@ -82,10 +82,10 @@ impl ChatServer {
         room_name: &str,
         user_id: &str,
         username: &str,
-    ) -> Result<(), ChatRoomError> {
+    ) -> Result<(), RoomError> {
         let has_address = self.users.read().contains_key(user_id);
         if !has_address {
-            return Err(ChatRoomError::InvalidUserId(user_id.to_string()));
+            return Err(RoomError::InvalidUserId(user_id.to_string()));
         }
 
         {
@@ -94,7 +94,7 @@ impl ChatServer {
                 self.rooms
                     .write()
                     .entry(room_name.to_string())
-                    .or_insert(ChatRoom::new(server_ptr))
+                    .or_insert(Room::new(server_ptr))
                     .add(user_id, username)?;
             }
         }
@@ -102,7 +102,7 @@ impl ChatServer {
         self.users
             .write()
             .get_mut(user_id)
-            .ok_or(ChatRoomError::InvalidUserId(user_id.to_string()))?
+            .ok_or(RoomError::InvalidUserId(user_id.to_string()))?
             .1 = Some(room_name.to_string());
 
         Ok(())
@@ -137,8 +137,8 @@ impl ChatServer {
 
     /// Broadcast a message to all members of a room.
     fn broadcast_to_room(&self, room_name: &str, message: &str, exclude_user_ids: &[&str]) {
-        if let Some(chat_room) = self.rooms.read().get(room_name) {
-            if let Err(err) = chat_room.broadcast_to_excluding(message, exclude_user_ids) {
+        if let Some(room) = self.rooms.read().get(room_name) {
+            if let Err(err) = room.broadcast_to_excluding(message, exclude_user_ids) {
                 log!(
                     "Failed to send message to room: [{}]; error: [{:?}]",
                     room_name,
@@ -149,15 +149,15 @@ impl ChatServer {
     }
 }
 
-impl Default for ChatServer {
+impl Default for TrustServer {
     fn default() -> Self {
-        ChatServer {
+        TrustServer {
             rooms: RwLock::default(),
             users: RwLock::default(),
         }
     }
 }
 
-impl Actor for ChatServer {
+impl Actor for TrustServer {
     type Context = Context<Self>;
 }

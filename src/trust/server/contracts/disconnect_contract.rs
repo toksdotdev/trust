@@ -1,6 +1,6 @@
 use crate::{
     log,
-    trust::{response::user_left_message, server::ChatServer},
+    trust::{response::user_left_message, server::TrustServer},
 };
 use actix::{Context, Handler};
 
@@ -12,7 +12,7 @@ pub struct DisconnectContract {
 }
 
 /// Handler for Disconnect message.
-impl Handler<DisconnectContract> for ChatServer {
+impl Handler<DisconnectContract> for TrustServer {
     type Result = ();
 
     fn handle(&mut self, msg: DisconnectContract, _: &mut Context<Self>) {

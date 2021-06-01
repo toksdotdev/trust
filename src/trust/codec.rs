@@ -2,9 +2,9 @@ use bytes::{BufMut, BytesMut};
 use std::io;
 use tokio_util::codec::{Decoder, Encoder};
 
-pub struct TrustTcpChatCodec;
+pub struct TrustTcpCodec;
 
-impl Decoder for TrustTcpChatCodec {
+impl Decoder for TrustTcpCodec {
     type Item = String;
     type Error = io::Error;
 
@@ -22,7 +22,7 @@ impl Decoder for TrustTcpChatCodec {
     }
 }
 
-impl Encoder<String> for TrustTcpChatCodec {
+impl Encoder<String> for TrustTcpCodec {
     type Error = io::Error;
 
     fn encode(&mut self, msg: String, dst: &mut BytesMut) -> Result<(), Self::Error> {

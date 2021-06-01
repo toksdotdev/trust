@@ -1,7 +1,7 @@
 use actix::Actor;
 use loaders::start_tcp_listener;
 use structopt::StructOpt;
-use trust::server::ChatServer;
+use trust::server::TrustServer;
 mod loaders;
 mod trust;
 
@@ -16,7 +16,7 @@ struct CliArgs {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let args = CliArgs::from_args();
-    let server = ChatServer::default().start();
+    let server = TrustServer::default().start();
     let address = format!("127.0.0.1:{}", args.port).parse().unwrap();
     log!("Starting application on {:?}", address);
 

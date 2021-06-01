@@ -1,9 +1,9 @@
-use crate::trust::server::utils::{valid_chatroom_name, valid_username};
+use crate::trust::server::utils::{valid_room_name, valid_username};
 use std::str::FromStr;
 
 #[derive(Debug)]
 pub enum UserContract {
-    JoinChatRoom { username: String, room_name: String },
+    JoinRoom { username: String, room_name: String },
     BroadcastMessage(String),
 }
 
@@ -20,7 +20,7 @@ impl FromStr for UserContract {
         match command.to_ascii_lowercase().as_str() {
             "join" => {
                 let room_name = fragments.next();
-                if !valid_chatroom_name(room_name) {
+                if !valid_room_name(room_name) {
                     return Err("Invalid room name".to_string());
                 }
 
@@ -33,7 +33,7 @@ impl FromStr for UserContract {
                     return Err("Invalid join command specified".to_string());
                 }
 
-                Ok(Self::JoinChatRoom {
+                Ok(Self::JoinRoom {
                     username: username.unwrap().to_string(),
                     room_name: room_name.unwrap().to_string(),
                 })

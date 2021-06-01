@@ -2,11 +2,11 @@ mod contracts;
 
 use self::contracts::UserContract;
 use super::{
-    codec::TrustTcpChatCodec,
+    codec::TrustTcpCodec,
     response::error_message,
     server::{
-        contracts::{ChatRoomContract, ConnectContract, DisconnectContract, PlainTextMessage},
-        ChatServer,
+        contracts::{RoomContract, ConnectContract, DisconnectContract, PlainTextMessage},
+        TrustServer,
     },
 };
 use crate::log;
@@ -27,8 +27,8 @@ use tokio::net::TcpStream;
 pub struct User {
     id: Option<String>,
     last_heartbeat_time: Instant,
-    chat_server: Addr<ChatServer>,
-    framed: FramedWrite<String, WriteHalf<TcpStream>, TrustTcpChatCodec>,
+    chat_server: Addr<TrustServer>,
+    framed: FramedWrite<String, WriteHalf<TcpStream>, TrustTcpCodec>,
 }
 
 impl User {
@@ -40,8 +40,8 @@ impl User {
 
     // Create a new instance of user.
     pub fn new(
-        chat_server_address: Addr<ChatServer>,
-        framed: FramedWrite<String, WriteHalf<TcpStream>, TrustTcpChatCodec>,
+        chat_server_address: Addr<TrustServer>,
+        framed: FramedWrite<String, WriteHalf<TcpStream>, TrustTcpCodec>,
     ) -> Self {
         Self {
             id: None,
@@ -105,19 +105,19 @@ impl User {
     }
 
     /// Map a chat session command to a chat server command
-    fn map_to_server_command(&self, cmd: UserContract, message: &str) -> Option<ChatRoomContract> {
+    fn map_to_server_command(&self, cmd: UserContract, message: &str) -> Option<RoomContract> {
         let cmd = match cmd {
-            UserContract::JoinChatRoom {
+            UserContract::JoinRoom {
                 room_name,
                 username,
-            } => ChatRoomContract::Join {
+            } => RoomContract::Join {
                 user_id: self.id.clone()?,
                 room_name: room_name.to_string(),
                 username: username.to_string(),
                 raw: message.to_string(),
             },
 
-            UserContract::BroadcastMessage(content) => ChatRoomContract::BroadcastMessage {
+            UserContract::BroadcastMessage(content) => RoomContract::BroadcastMessage {
                 user_id: self.id.clone()?,
                 content,
             },

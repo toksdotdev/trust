@@ -1,6 +1,6 @@
-use crate::trust::room::ChatRoomError;
+use crate::trust::room::RoomError;
 
 #[derive(Debug)]
-pub enum ChatServerError {
-    ChatRoomError(ChatRoomError),
+pub enum TrustServerError {
+    RoomError(RoomError),
 }

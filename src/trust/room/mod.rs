@@ -2,7 +2,7 @@ mod errors;
 
 pub use self::errors::*;
 use crate::trust::server::contracts::PlainTextMessage;
-use crate::trust::server::{ChatServer, UserSessionId};
+use crate::trust::server::{TrustServer, UserSessionId};
 use actix::prelude::*;
 use parking_lot::RwLock;
 use std::{collections::HashMap, rc::Weak};
@@ -11,13 +11,13 @@ type Username = String;
 
 #[derive(Message, Debug)]
 #[rtype(result = "()")]
-pub struct ChatRoom {
-    server: Weak<ChatServer>,
+pub struct Room {
+    server: Weak<TrustServer>,
     store: RwLock<HashMap<UserSessionId, Username>>,
 }
 
-impl ChatRoom {
-    pub fn new(server: Weak<ChatServer>) -> Self {
+impl Room {
+    pub fn new(server: Weak<TrustServer>) -> Self {
         Self {
             server,
             store: RwLock::default(),
@@ -35,13 +35,13 @@ impl ChatRoom {
     }
 
     /// Add a client to the room.
-    pub fn add(&self, user_id: &str, username: &str) -> Result<(), ChatRoomError> {
+    pub fn add(&self, user_id: &str, username: &str) -> Result<(), RoomError> {
         if let Some(_) = self
             .store
             .write()
             .insert(user_id.to_string(), username.to_string())
         {
-            return Err(ChatRoomError::DuplicateSessionId(user_id.to_string()));
+            return Err(RoomError::DuplicateSessionId(user_id.to_string()));
         }
 
         Ok(())
@@ -57,8 +57,8 @@ impl ChatRoom {
         &self,
         message: &str,
         excluding: &[&str],
-    ) -> Result<(), ChatRoomError> {
-        let server = self.server.upgrade().ok_or(ChatRoomError::NoServer)?;
+    ) -> Result<(), RoomError> {
+        let server = self.server.upgrade().ok_or(RoomError::NoServer)?;
 
         self.store
             .read()

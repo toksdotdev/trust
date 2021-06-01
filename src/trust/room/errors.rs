@@ -1,23 +1,23 @@
-use crate::trust::server::{contracts::PlainTextMessage, ChatServerError};
+use crate::trust::server::{contracts::PlainTextMessage, TrustServerError};
 use actix::prelude::SendError;
 
 /// Chat room Error.
 #[derive(Debug)]
-pub enum ChatRoomError {
+pub enum RoomError {
     NoServer,
     InvalidUserId(String),
     DuplicateSessionId(String),
     FailedToSend(SendError<PlainTextMessage>),
 }
 
-impl From<ChatRoomError> for ChatServerError {
-    fn from(error: ChatRoomError) -> Self {
-        ChatServerError::ChatRoomError(error)
+impl From<RoomError> for TrustServerError {
+    fn from(error: RoomError) -> Self {
+        TrustServerError::RoomError(error)
     }
 }
 
-impl From<SendError<PlainTextMessage>> for ChatRoomError {
+impl From<SendError<PlainTextMessage>> for RoomError {
     fn from(error: SendError<PlainTextMessage>) -> Self {
-        ChatRoomError::FailedToSend(error)
+        RoomError::FailedToSend(error)
     }
 }

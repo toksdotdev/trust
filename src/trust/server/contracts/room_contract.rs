@@ -1,12 +1,12 @@
 use crate::trust::{
-    response::{error_message, user_joined_message, new_chat_message},
-    server::{ChatServer, ChatServerError},
+    response::{error_message, new_user_message, user_joined_message},
+    server::{TrustServer, TrustServerError},
 };
 use actix::{Context, Handler};
 
 #[derive(actix::Message)]
-#[rtype(result = "Result<String, ChatServerError>")]
-pub enum ChatRoomContract {
+#[rtype(result = "Result<String, TrustServerError>")]
+pub enum RoomContract {
     Join {
         user_id: String,
         username: String,
@@ -20,12 +20,12 @@ pub enum ChatRoomContract {
 }
 
 /// Handler for Chat Server Command message.
-impl<'e> Handler<ChatRoomContract> for ChatServer {
-    type Result = Result<String, ChatServerError>;
+impl<'e> Handler<RoomContract> for TrustServer {
+    type Result = Result<String, TrustServerError>;
 
-    fn handle(&mut self, command: ChatRoomContract, _: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, command: RoomContract, _: &mut Context<Self>) -> Self::Result {
         match command {
-            ChatRoomContract::Join {
+            RoomContract::Join {
                 user_id,
                 raw,
                 username,
@@ -33,7 +33,7 @@ impl<'e> Handler<ChatRoomContract> for ChatServer {
             } => match self.get_user_room(&user_id) {
                 Some(room_name) => {
                     if let Some(username) = self.get_username(&user_id) {
-                        let message = new_chat_message(&username, &raw);
+                        let message = new_user_message(&username, &raw);
                         self.broadcast_to_room(&room_name, &&message, &[]);
                     }
                 }
@@ -44,11 +44,11 @@ impl<'e> Handler<ChatRoomContract> for ChatServer {
                 }
             },
 
-            ChatRoomContract::BroadcastMessage { content, user_id } => {
+            RoomContract::BroadcastMessage { content, user_id } => {
                 match self.get_username(&user_id) {
                     None => self.message_user(&user_id, &error_message()),
                     Some(username) => {
-                        let message = new_chat_message(&username, &content);
+                        let message = new_user_message(&username, &content);
                         self.broadcast_to_room_of_user(&user_id, &&message, &[])
                     }
                 }
